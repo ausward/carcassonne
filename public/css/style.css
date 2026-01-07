@@ -1,0 +1,33 @@
+body {
+  margin: 20px;
+}
+
+:root {
+    
+    --gridCols: 300;
+    --gridRows: 300;
+    --gridSize: min(calc(100vw / var(--gridCols)), calc(100vh / var(--gridCols)));
+}
+#center{
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    justify-items: center;
+}
+#grid {
+  display: grid;
+  grid-template-columns: repeat(var(--gridCols), var(--gridSize));
+  grid-template-rows: repeat(var(--gridRows), var(--gridSize));
+  width: min(100vw, 90vh);
+  border: 1px solid black;
+  
+}
+
+.cell {
+  width: var(--gridSize);
+  height: var(--gridSize);
+  border: 1px solid black;
+  box-sizing: border-box;
+  background-size: cover;
+  background-position: center;
+}
