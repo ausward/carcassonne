@@ -1,14 +1,70 @@
+//.  https://en.wikipedia.org/wiki/Carcassonne_(board_game)
+
 const grid = document.getElementById('grid');
+const TEST = document.getElementById('TEST');
 
 let gridSize = 9; // Change this to change the grid size (e.g., 8 for 8x8, 20 for 20x20)
 
 const straightImage = "url('img/stright.webp')";
-const straightRoad = [[0],[1],[0],[1]];
+const straightRoad = [0, 1, 0, 1];
 // Example road data for a straight road (up, right, down, left)
 const TImage = "url('img/T.webp')";
-const TRoad = [[1],[1],[0],[1]];
+const TRoad = [1, 1, 0, 1];
+
+const cornerImage = "url('img/corner.webp')";
+const cornerRoad = [1, 0, 0, 1];
+
+const XImage = "url('img/X.webp')";
+const XRoad = [1, 1, 1, 1];
+
+const cityImage = "url('img/city.webp')";
+const cityRoad = [0, 0, 0, 1];
+const cityNoRoadData = [0, 0, 0, 0];
+const cityWithNoRoadImage = "url('img/cityNoRoad.webp')"; 
+
+const forest1edgeImage = "url('img/forestOneEdge.webp')";
+const forest1edgeData = [2, 0, 0, 0];
+
+const forest2edgeImage = "url('img/forest2edge.webp')";
+const forest2edgeData = [2, 0, 2, 0];
+
+const TwithBImage = "url('img/TwithB.webp')";
+const TwithBRoad = [2, 1, 1, 1];
+
+const rwithBImage = "url('img/rwithB.webp')";
+const rwithBRoad = [2, 1, 1, 0];
+
+const lwithBImage = "url('img/lwithB.webp')";
+const lwithBRoad = [2, 0, 1, 1];
+const allBImage = "url('img/allb.webp')";
+const allBRoad = [2, 2, 2, 2];
+
+const st8withBImage = "url('img/str8withB.webp')";
+const st8withBRoad = [2, 1, 0, 1];
+
+const BcornerImage = "url('img/Bcorner.webp')";
+const BcornerRoad = [2, 2, 0, 0];
+const RoadIntoBrownImage = "url('img/rintoB.webp')";
+const RoadIntoBrownData = [2, 2, 1, 2];
 
 let LASTTOUCHED = null;
+
+const allRoads = [ [straightImage, straightRoad],
+                    [TImage, TRoad],
+                    [cornerImage, cornerRoad],
+                    [XImage, XRoad],
+                    [cityImage, cityRoad],
+                    [cityWithNoRoadImage, cityNoRoadData],
+                    [forest1edgeImage, forest1edgeData],
+                    [forest2edgeImage, forest2edgeData],
+                    [TwithBImage, TwithBRoad],
+                    [rwithBImage, rwithBRoad],
+                    [lwithBImage, lwithBRoad],
+                    [allBImage, allBRoad],
+                    [st8withBImage, st8withBRoad],
+                    [BcornerImage, BcornerRoad], 
+                    [RoadIntoBrownImage, RoadIntoBrownData]
+                 ];
 
 // Set CSS variables for dynamic grid
 document.documentElement.style.setProperty('--gridCols', gridSize);
@@ -26,12 +82,31 @@ document.addEventListener('keydown', function(event) {
     }
   } else if (event.key === 'n' || event.key === 'N') {
     if (LASTTOUCHED) {
-      PlaceNextRoadGood(LASTTOUCHED, straightImage, straightRoad);
+        let passed = false;
+        let trys = 0;
+        while (!passed) {
+            console.log("Attempting to place road, try number: " + trys);
+        let randomRoadIndex = Math.floor(Math.random() * allRoads.length);
+        let available = GetActionableCells();
+        
+        if (trys > allRoads.length * available.length) {
+            // alert("Exceeded maximum number of tries to place a road.");
+            return;
+        }
+        if (available.length == 0) {
+            console.log("No available cells to place a road.");
+            return;
+        }
+        let randomActionableIndex = Math.floor(Math.random() * available.length);
+        TEST.style.backgroundImage = allRoads[randomRoadIndex][0];
+      passed = PlaceNextRoadGood(available[randomActionableIndex], allRoads[randomRoadIndex][0], allRoads[randomRoadIndex][1]);
+        trys++;
+        }
     } else {
       console.log('No cell has been touched yet.');
     }
   } else if (event.key === 't' || event.key === 'T') {
-    PlaceNextRoadGood(LASTTOUCHED, TImage, TRoad);
+    PlaceNextRoadGood(LASTTOUCHED, cityWithNoRoadImage, cityNoRoadData);
   }
   else if (event.key === 'a' || event.key === 'A') {
     const actionableCells = GetActionableCells();
@@ -120,6 +195,10 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
     let down = null;
     let left = null;
 
+
+    console.log("Placing next road at ", getCellIndexAsXY(cell));
+    console.log("Road data: ", roadTypeData);
+
     if (cellindex == null) {
         cellindex = getCellIndexAsXY(cell);
     }
@@ -138,14 +217,14 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
     const cellData = JSON.parse(cell.title);
     let directions = ['up', 'right', 'down', 'left'];
     //right
-    if (cellData[1] == 1 && right != null && right.title == "") {
+    if (right != null && right.title == "") {
         if (CheckRight(right, roadTypeData)) {
             PlaceRoad(right, roadTypeImage, roadTypeData, 0);
             LASTTOUCHED = right;
             return true;
         } else if (!isStraightRoad(roadTypeData)) {
             let tempRoadData = roadTypeData;
-            for (let i = 1; i < 4; i++) {
+            for (let i = 1; i <= 4; i++) {
                 tempRoadData= rotateRoad(tempRoadData);
                 if (CheckRight(right, tempRoadData)) {
                     PlaceRoad(right, roadTypeImage, roadTypeData, i );
@@ -154,25 +233,30 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
                 }
             }
         }
+        console.log("fail right check");
     }
     // up
-    if (cellData[0] == 1 && up != null && up.title == "") {
+    if (up != null && up.title == "") {
+        console.log("checking up");
         if (CheckUp(up, roadTypeData)) {
             PlaceRoad(up, roadTypeImage, roadTypeData, 1);
             LASTTOUCHED = up;
             return true;} 
         if (!isStraightRoad(roadTypeData)) {
             let tempRoadData = roadTypeData;
-            for (let i = 1; i < 4; i++) {
+            for (let i = 1; i <= 4; i++) {
                 tempRoadData= rotateRoad(tempRoadData);
                 if (CheckUp(up, tempRoadData)) {
                     PlaceRoad(up, roadTypeImage, roadTypeData, i  );
                     LASTTOUCHED = up;
                     return true;
                 }}
-        }}
+        }
+    
+    console.log("fail up check");}
     //left
-    if (cellData[3] == 1 && left != null && left.title == "") {
+    console.log("fail up");
+    if ( left != null && left.title == "") {
         if (CheckLeft(left, roadTypeData)) {
             PlaceRoad(left, roadTypeImage, roadTypeData, 0);
             LASTTOUCHED = left;
@@ -191,10 +275,10 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
                 }
                 // console.log(i);
             }}
-
+        console.log("fail left check");
     }
     // down
-    if (cellData[2] == 1 && down != null && down.title == "") {
+    if ( down != null && down.title == "") {
         if (CheckDown(down, roadTypeData)) {
             PlaceRoad(down, roadTypeImage, roadTypeData, 0);
             LASTTOUCHED = down;
@@ -202,7 +286,7 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
         } 
         if (!isStraightRoad(roadTypeData)) {
             let tempRoadData = roadTypeData;
-            for (let i = 1; i < 4; i++) {
+            for (let i = 1; i <= 4; i++) {
                 tempRoadData= rotateRoad(tempRoadData);
                 if (CheckDown(down, tempRoadData)) {
                     PlaceRoad(down, roadTypeImage, roadTypeData, i  );
@@ -211,7 +295,11 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
                 }
             }
         }
+        console.log("fail down check");
     }
+    TEST.style.backgroundImage = roadTypeImage;
+    console.log("No valid placement found");
+    return false;
 
 }
 
@@ -220,20 +308,33 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
     
 function CheckUp(UPcell, upCellData) {
     let cellIndex = getCellIndexAsXY(UPcell);
-    let upright =  (cellIndex.x + 1 < gridSize-1 ) ?  GetCellAt(cellIndex.x + 1, cellIndex.y ) : null;
+    let upright =  (cellIndex.x + 1 < gridSize ) ?  GetCellAt(cellIndex.x + 1, cellIndex.y ) : null;
     let upleft = (cellIndex.x - 1 >= 0) ? GetCellAt(cellIndex.x - 1, cellIndex.y ) : null;
     let upup = (cellIndex.y - 1 >= 0) ? GetCellAt(cellIndex.x, cellIndex.y - 1) : null;
     let uprightData = (upright != null && upright.title != "") ? JSON.parse(upright.title) : null;
     let upleftData = (upleft != null && upleft.title != "") ? JSON.parse(upleft.title) : null;
     let upupData = (upup != null && upup.title != "") ? JSON.parse(upup.title) : null;
+    let down = GetCellAt(cellIndex.x, cellIndex.y + 1);
+    let downData = (down != null && down.title != "") ? JSON.parse(down.title) : null;
     // down 
-    if (Number(upCellData[2]) != 1 ) return false ;
+    if (Number(upCellData[2]) !=  Number(downData[0])) {
+        console.log("fail down check");
+        return false ;}
     // up up
-    if ((upupData != null)) if ( (Number(upupData[2]) !=  Number(upCellData[0])) ) {return false;}
+    if ((upupData != null)) if ( (Number(upupData[2]) !=  Number(upCellData[0])) ) {
+        console.log("fail up up check");
+        return false;}
     // right 
-    if (uprightData != null) if   ((Number(uprightData[3]) !=  Number(upCellData[1])) ? true :  false) {return false;}
+    if (uprightData != null) if   ((Number(uprightData[3]) !=  Number(upCellData[1])) ? true :  false) {
+        console.log("fail right check");
+        
+        return false;}
     //left
-    if (upleftData != null) if (!(Number(upleftData[1]) ==  Number(upCellData[3])))  { return false;}
+    if (upleftData != null) if (!(Number(upleftData[1]) ==  Number(upCellData[3])))  { 
+        console.log("fail left check");
+        return false;}
+
+    
     return true;
 }
 
@@ -245,23 +346,28 @@ function CheckRight(RIGHTcell, rightCellData) {
     let rightdown = null;
     if (cellIndex.y + 1 < gridSize ) rightdown = GetCellAt(cellIndex.x, cellIndex.y + 1);
     let rightright = null;
-    if (cellIndex.x + 1 < gridSize - 1) rightright = GetCellAt(cellIndex.x + 1, cellIndex.y);
+    if (cellIndex.x + 1 < gridSize ) rightright = GetCellAt(cellIndex.x + 1, cellIndex.y);
     let rightupData = (rightup != null && rightup.title != "") ? JSON.parse(rightup.title) : null;
     let rightdownData = (rightdown != null && rightdown.title != "") ? JSON.parse(rightdown.title) : null;
     let rightrightData = (rightright != null && rightright.title != "") ? JSON.parse(rightright.title) : null;
     let left = GetCellAt(cellIndex.x - 1, cellIndex.y);
     let leftData = (left != null && left.title != "") ? JSON.parse(left.title) : null;
     // check left Data
-    if (leftData != null) if  (!(Number(leftData[1]) ==  Number(rightCellData[3]))) return false;
+    if (leftData != null) if  (!(Number(leftData[1]) ==  Number(rightCellData[3])))  {
+        console.log(leftData);
+        console.log(rightCellData);
+        console.log("fail left check");
+        return false;
+    }
     // check right of right 
     if (rightrightData != null) {
-        if  (!(Number(rightrightData[3]) ==  Number(rightCellData[1]))) return false; } 
+        if  (!(Number(rightrightData[3]) ==  Number(rightCellData[1]))) { console.log("fail right of right check"); return false; } }
         // no roads off right side of board
         // else if (rightCellData[1] == 1) { return false; }
         // check up of right
-    if ((rightupData != null)) if  (Number(rightupData[2]) !=  Number(rightCellData[0]) ) return false;
+    if ((rightupData != null)) if  (Number(rightupData[2]) !=  Number(rightCellData[0]) ) { console.log("fail up of right check"); return false;}
     // check down of right
-    if ((rightdownData != null)) { if  (Number(rightdownData[0]) !=  Number(rightCellData[2]) ){ return false; } }
+    if ((rightdownData != null)) { if  (Number(rightdownData[0]) !=  Number(rightCellData[2]) ){ console.log("fail down of right check"); return false; } }
     return true;
 }
     
@@ -298,14 +404,16 @@ function CheckLeft(LEFTcell, leftCellData) {
 
 function CheckDown(DOWNcell, downCellData) {
     let cellIndex = getCellIndexAsXY(DOWNcell);
-    let downright = (cellIndex.x + 1 < gridSize-1 ) ?  GetCellAt(cellIndex.x + 1, cellIndex.y ) : null;
+    let downright = (cellIndex.x + 1 < gridSize ) ?  GetCellAt(cellIndex.x + 1, cellIndex.y ) : null;
     let downleft = (cellIndex.x - 1 >= 0) ? GetCellAt(cellIndex.x - 1, cellIndex.y ) : null;
     let downdown = (cellIndex.y + 1 < gridSize) ? GetCellAt(cellIndex.x, cellIndex.y + 1) : null;
     let downrightData = (downright != null && downright.title != "") ? JSON.parse(downright.title) : null;
     let downleftData = (downleft != null && downleft.title != "") ? JSON.parse(downleft.title) : null;
     let downdownData = (downdown != null && downdown.title != "") ? JSON.parse(downdown.title) : null;
+    let up = GetCellAt(cellIndex.x, cellIndex.y - 1);
+    let upData = (up != null && up.title != "") ? JSON.parse(up.title) : null;
     // up 
-    if (Number(downCellData[0]) != 1 ) return false ;
+    if (Number(downCellData[0]) !=  Number(upData[2])) return false ;
     // down down
     if ((downdownData != null)) if ( (Number(downdownData[0]) !=  Number(downCellData[2])) ) {return false;}
     // right 
@@ -385,8 +493,8 @@ if (cellData[0] == 1){
                 let cellToUpLeft = GetCellAt(cellToUp.x - 1, cellToUp.y);
                 let cellToUpLeftData = null;
                 let cellToUpRightData = null;
-                console.log("line 160");
-                console.log(getCellIndexAsXY(CellToUpRight) == { x: cellToUp.x + 1, y: cellToUp.y });
+                // console.log("line 160");
+                // console.log(getCellIndexAsXY(CellToUpRight) == { x: cellToUp.x + 1, y: cellToUp.y });
                 if (cellIndex.x != (gridSize-1) && CellToUpRight.title == "" ){
                     
                     PlaceRoad(up, roadTypeImage, roadTypeData, 1);
@@ -431,7 +539,7 @@ function PlaceRoad(cell, roadTypeImage, roadTypeData, rotation=0) {
         // console.log("Rotating for placement");
         rotateCell(cell);
     }
-    console.log("placeroad " + cell.title);
+    // console.log("placeroad " + cell.title);
 
     
 }
@@ -467,8 +575,8 @@ function GetActionableCells() {
             let right = GetCellAt(cellIndex.x + 1, cellIndex.y);
             let down = GetCellAt(cellIndex.x, cellIndex.y + 1);
             let left = GetCellAt(cellIndex.x - 1, cellIndex.y);
-            console.log(up, right, down, left);
-            console.log(up?.title, right?.title, down?.title, left?.title);
+            // console.log(up, right, down, left);
+            // console.log(up?.title, right?.title, down?.title, left?.title);
             if ((up && up.title == "") || (right && right.title == "") || (down && down.title == "") || (left && left.title == "")) {
                 actionableCells.push(cell);
             }
