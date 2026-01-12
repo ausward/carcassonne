@@ -6,10 +6,11 @@ body {
     
     --gridCols: 300;
     --gridRows: 300;
-    --gridSize: min(calc(100vw / var(--gridCols)), calc(100vh / var(--gridCols)));
+    --gridSize: min(calc(80vw / var(--gridCols)), calc(80vh / var(--gridCols)));
 }
 #center{
     display:flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     justify-items: center;
@@ -18,9 +19,29 @@ body {
   display: grid;
   grid-template-columns: repeat(var(--gridCols), var(--gridSize));
   grid-template-rows: repeat(var(--gridRows), var(--gridSize));
-  width: min(100vw, 90vh);
+  width: min(80vw, 80vh);
   border: 1px solid black;
+  /* background-color: bisque; */
   
+}
+
+#preview {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.preview-tile {
+  width: 100px;
+  height: 100px;
+  border: 2px solid black;
+  background-size: cover;
+  background-position: center;
+  cursor: grab;
+}
+
+.preview-tile:active {
+  cursor: grabbing;
 }
 
 .cell {
@@ -30,4 +51,35 @@ body {
   box-sizing: border-box;
   background-size: cover;
   background-position: center;
+  background-color: navajowhite;
+}
+
+.cell.drag-over {
+  background-color: rgba(0, 255, 0, 0.3);
+}
+
+#shuffleBtn {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#shuffleBtn:hover {
+  background-color: #e0e0e0;
+}
+
+#resetBtn {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#resetBtn:hover {
+  background-color: #e0e0e0;
 }
