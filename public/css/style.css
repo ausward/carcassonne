@@ -6,7 +6,7 @@ body {
     
     --gridCols: 300;
     --gridRows: 300;
-    --gridSize: min(calc(80vw / var(--gridCols)), calc(80vh / var(--gridCols)));
+    --gridSize: min(calc(75vw / var(--gridCols)), calc(75vh / var(--gridCols)));
 }
 #center{
     display:flex;
@@ -19,7 +19,7 @@ body {
   display: grid;
   grid-template-columns: repeat(var(--gridCols), var(--gridSize));
   grid-template-rows: repeat(var(--gridRows), var(--gridSize));
-  width: min(80vw, 80vh);
+  width: min(75vw, 75vh);
   border: 1px solid black;
   /* background-color: bisque; */
   
@@ -82,4 +82,57 @@ body {
 
 #resetBtn:hover {
   background-color: #e0e0e0;
+}
+
+#helpBtn {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#helpBtn:hover {
+  background-color: #e0e0e0;
+}
+
+.popover {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  z-index: 1000;
+  max-width: 400px;
+  font-size: 14px;
+}
+
+.popover h4 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+}
+
+.popover ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.popover li {
+  margin-bottom: 3px;
+}
+
+#scorePanel {
+  margin-left: 1px;
+  padding: 1px;
+  border: 1px solid black;
+  background-color: #f9f9f9;
+  min-width: 150px;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
 }

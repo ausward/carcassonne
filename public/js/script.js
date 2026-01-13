@@ -1,7 +1,6 @@
 //.  https://en.wikipedia.org/wiki/Carcassonne_(board_game)
 
 const grid = document.getElementById('grid');
-const TEST = document.getElementById('TEST');
 
 let gridSize = 15; // Change this to change the grid size (e.g., 8 for 8x8, 20 for 20x20)
 
@@ -96,15 +95,7 @@ document.documentElement.style.setProperty('--gridRows', gridSize);
 
 // Add event listener for 'f' key press
 document.addEventListener('keydown', function(event) {
-  if (event.key === 'f' || event.key === 'F') {
-    PlaceRoad(grid.children[1], straightImage, straightRoad);
-  } else if (event.key === 'l' || event.key === 'L') {
-    if (LASTTOUCHED) {
-      console.log('Last touched cell:', getCellIndexAsXY(LASTTOUCHED));
-    } else {
-      console.log('No cell has been touched yet.');
-    }
-  } else if (event.key === 'n' || event.key === 'N') {
+   if (event.key === 'n' || event.key === 'N') {
     if (LASTTOUCHED) {
         let passed = false;
         let trys = 0;
@@ -116,7 +107,6 @@ document.addEventListener('keydown', function(event) {
                 alert("No more tiles in the deck.");
                 return;
             }
-            let randomRoadIndex = Math.floor(Math.random() * Deck.length);
             let available = GetActionableCellsBasedOn(tile[1]);
 
             console.log("Available cells to place road: ", available);
@@ -124,53 +114,101 @@ document.addEventListener('keydown', function(event) {
                 available = GetActionableCells();
             }
             
+            // Get all empty cells adjacent to placed tiles
+            let adjacentEmpty = [];
+            for (let cell of grid.children) {
+                if (cell.title !== "") {
+                    let ci = getCellIndexAsXY(cell);
+                    if (ci.y > 0) {
+                        let up = GetCellAt(ci.x, ci.y - 1);
+                        if (up.title === "") adjacentEmpty.push(up);
+                    }
+                    if (ci.x < gridSize - 1) {
+                        let right = GetCellAt(ci.x + 1, ci.y);
+                        if (right.title === "") adjacentEmpty.push(right);
+                    }
+                    if (ci.y < gridSize - 1) {
+                        let down = GetCellAt(ci.x, ci.y + 1);
+                        if (down.title === "") adjacentEmpty.push(down);
+                    }
+                    if (ci.x > 0) {
+                        let left = GetCellAt(ci.x - 1, ci.y);
+                        if (left.title === "") adjacentEmpty.push(left);
+                    }
+                }
+            }
+            // Remove duplicates
+            adjacentEmpty = [...new Set(adjacentEmpty)];
+
+            // If no adjacent empty (first tile), use all empty
+            if (adjacentEmpty.length === 0) {
+                adjacentEmpty = Array.from(grid.children).filter(cell => cell.title === "");
+            }
+            
             if (trys >  gridSize * gridSize) {
                 Deck.push(tile); // Return the tile back to the deck
                 // alert("Exceeded maximum number of tries to place a road.");
                 return;
             }
-            if (available.length == 0) {
+            if (adjacentEmpty.length == 0) {
                 console.log("No available cells to place a road.");
-                let randomCell = grid.children[Math.floor(Math.random() * grid.children.length)];
-                while (randomCell.title !== "") {
-                    randomCell = grid.children[Math.floor(Math.random() * grid.children.length)];
-                }
-                PlaceRoad(randomCell, tile[0], tile[1]);
-                LASTTOUCHED = randomCell;
-                // Deck.push(tile); // Remove this, tile is used
-                updatePreview();
+                Deck.push(tile);
                 return;
             }
-            let randomActionableIndex = Math.floor(Math.random() * available.length);
-            // TEST.style.backgroundImage = tile[0];
-            passed = PlaceNextRoadGood(available[randomActionableIndex], tile[0], tile[1]);
+            // First try preferred cells (adjacent to same type component)
+            let triedCells = new Set();
+            if (available.length > 0) {
+                for (let cell of available) {
+                    if (cell.title !== "") continue; // Skip if not empty
+                    triedCells.add(cell);
+                    let roadData = tile[1];
+                    for (let rot = 0; rot < 4; rot++) {
+                        if (checkIfValidPlacement(cell, roadData)) {
+                            PlaceRoad(cell, tile[0], tile[1], rot);
+                            LASTTOUCHED = cell;
+                            passed = true;
+                            break;
+                        }
+                        roadData = rotateRoad(roadData);
+                    }
+                    if (passed) break;
+                }
+            }
+            // If not placed, try remaining adjacent empty
+            if (!passed) {
+                for (let cell of adjacentEmpty) {
+                    if (triedCells.has(cell) || cell.title !== "") continue; // Skip if already tried or not empty
+                    let roadData = tile[1];
+                    for (let rot = 0; rot < 4; rot++) {
+                        if (checkIfValidPlacement(cell, roadData)) {
+                            PlaceRoad(cell, tile[0], tile[1], rot);
+                            LASTTOUCHED = cell;
+                            passed = true;
+                            break;
+                        }
+                        roadData = rotateRoad(roadData);
+                    }
+                    if (passed) break;
+                }
+            }
             if (!passed) {
                 Deck.push(tile); // Return the tile back to the deck
             }
             trys++;
-         }
+        }
         updatePreview();
+        updateScore();
     } else {
       console.log('No cell has been touched yet.');
     }
-  } else if (event.key === 't' || event.key === 'T') {
-    let DECK = buildDeck();
-  }
-  else if (event.key === 'a' || event.key === 'A') {
-    const actionableCells = GetActionableCells();
-    console.log('Actionable cells:', actionableCells.map(cell => getCellIndexAsXY(cell)));
+  } else if (event.key === 'a' || event.key === 'A') {
+    if (Deck.length === 0) {
+        Deck = buildDeck();
+        updatePreview();
+    }
+    autoPlaceAll();
   } else if (event.key === 's' || event.key === 'S') {
-    const longestRoad = longestComponent(1);
-    outlineLongestComponent(longestRoad);
-    console.log('Longest road length:', longestRoad);
-    const longestCity = longestComponent(2);
-    outlineLongestComponent(longestCity);
-    console.log('Longest city length:', longestCity);       
-
-    console.log('Longest dirt length:', LongestDirt);
-  }else if (event.key === 'd' || event.key === 'D') {
-        const LongestDirt = longestComponent(2);
-    outlineLongestComponent(LongestDirt);
+    updateScore();
   }
 
 });
@@ -209,6 +247,7 @@ for (let i = 0; i < gridSize * gridSize; i++) {
                 PlaceRoad(cell, tile[0], tile[1], rotation);
                 Deck.splice(tileIndex, 1);
                 updatePreview();
+                updateScore();
             }
         }
     });
@@ -318,6 +357,110 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     }
 });
 
+document.getElementById('helpBtn').addEventListener('click', () => {
+    const popover = document.getElementById('helpPopover');
+    if (popover.style.display === 'block') {
+        popover.style.display = 'none';
+    } else {
+        popover.style.display = 'block';
+    }
+});
+
+// Hide popover when clicking outside
+document.addEventListener('click', (event) => {
+    const popover = document.getElementById('helpPopover');
+    const helpBtn = document.getElementById('helpBtn');
+    if (!popover.contains(event.target) && !helpBtn.contains(event.target)) {
+        popover.style.display = 'none';
+    }
+});
+
+function autoPlaceAll() {
+    while (Deck.length > 0) {
+        let tile = GetTile();
+        if (!tile) break;
+        let placed = false;
+
+        // Get all empty cells adjacent to placed tiles
+        let adjacentEmpty = [];
+        for (let cell of grid.children) {
+            if (cell.title !== "") {
+                let ci = getCellIndexAsXY(cell);
+                if (ci.y > 0) {
+                    let up = GetCellAt(ci.x, ci.y - 1);
+                    if (up.title === "") adjacentEmpty.push(up);
+                }
+                if (ci.x < gridSize - 1) {
+                    let right = GetCellAt(ci.x + 1, ci.y);
+                    if (right.title === "") adjacentEmpty.push(right);
+                }
+                if (ci.y < gridSize - 1) {
+                    let down = GetCellAt(ci.x, ci.y + 1);
+                    if (down.title === "") adjacentEmpty.push(down);
+                }
+                if (ci.x > 0) {
+                    let left = GetCellAt(ci.x - 1, ci.y);
+                    if (left.title === "") adjacentEmpty.push(left);
+                }
+            }
+        }
+        // Remove duplicates
+        adjacentEmpty = [...new Set(adjacentEmpty)];
+
+        // If no adjacent empty (first tile), use all empty
+        if (adjacentEmpty.length === 0) {
+            adjacentEmpty = Array.from(grid.children).filter(cell => cell.title === "");
+        }
+
+        // Try to place on each adjacent empty with rotations
+        for (let cell of adjacentEmpty) {
+            if (cell.title !== "") continue; // Skip if not empty
+            let roadData = tile[1];
+            for (let rot = 0; rot < 4; rot++) {
+                if (checkIfValidPlacement(cell, roadData)) {
+                    PlaceRoad(cell, tile[0], tile[1], rot);
+                    updateScore();
+                    placed = true;
+                    break;
+                }
+                roadData = rotateRoad(roadData);
+            }
+            if (placed) break;
+        }
+
+        if (!placed) {
+            console.log("No valid placement for tile, skipping");
+        }
+    }
+    updatePreview();
+}
+
+function checkIfValidPlacement(cell, roadData) {
+    let ci = getCellIndexAsXY(cell);
+    let up = ci.y > 0 ? GetCellAt(ci.x, ci.y - 1) : null;
+    let right = ci.x < gridSize - 1 ? GetCellAt(ci.x + 1, ci.y) : null;
+    let down = ci.y < gridSize - 1 ? GetCellAt(ci.x, ci.y + 1) : null;
+    let left = ci.x > 0 ? GetCellAt(ci.x - 1, ci.y) : null;
+
+    if (up && up.title) {
+        let upData = JSON.parse(up.title);
+        if (roadData[0] !== upData[2]) return false;
+    }
+    if (right && right.title) {
+        let rightData = JSON.parse(right.title);
+        if (roadData[1] !== rightData[3]) return false;
+    }
+    if (down && down.title) {
+        let downData = JSON.parse(down.title);
+        if (roadData[2] !== downData[0]) return false;
+    }
+    if (left && left.title) {
+        let leftData = JSON.parse(left.title);
+        if (roadData[3] !== leftData[1]) return false;
+    }
+    return true;
+}
+
 function GetTile() {
     return Deck.pop();
 }
@@ -412,17 +555,6 @@ function getScore() {
     return Math.max(roadScore, cityScore);
 }
 
-function getDirection(fromCell, toCell) {
-    let from = getCellIndexAsXY(fromCell);
-    let to = getCellIndexAsXY(toCell);
-    if (to.x > from.x) return 'right';
-    if (to.x < from.x) return 'left';
-    if (to.y > from.y) return 'down';
-    if (to.y < from.y) return 'up';
-    return null;
-}
-
-
 function PrintData(event) {
     event.preventDefault();
     const cell = event.target;
@@ -436,6 +568,7 @@ function PlacePreviewTileOnCell(cell) {
         const tile = Deck.pop();
         updatePreview();
         PlaceRoad(cell, tile[0], tile[1]);
+        updateScore();
     } else {
         rotateCell(cell);
     }
@@ -482,11 +615,6 @@ function rotateRoad(roadData) {
    
 }
 
-function isStraightRoad(roadData) {
-    return ( ( Number(roadData[0]) == Number(roadData[2])) && (Number(roadData[1]) ==  Number(roadData[3])) ) ||
-           ( (Number(roadData[1]) ==  Number(roadData[3]) ) && (Number(roadData[0]) ==  Number(roadData[2]) ) );
-}
-
 
 function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex = null) {
     // TEST.style.backgroundImage = roadTypeImage;
@@ -520,92 +648,37 @@ function PlaceNextRoadGood(cell, roadTypeImage, roadTypeData, depth=0, cellindex
     }
     const cellData = JSON.parse(cell.title);
     let directions = ['up', 'right', 'down', 'left'];
-    //right
-    if (right != null && right.title == "") {
-        if (CheckRight(right, roadTypeData)) {
-            PlaceRoad(right, roadTypeImage, roadTypeData, 0);
-            LASTTOUCHED = right;
-            return true;
-        } else if (!isStraightRoad(roadTypeData)) {
+    // Try each direction: right, up, left, down
+    const directionsMap = [
+        { dir: 'right', cell: right, check: CheckRight },
+        { dir: 'up', cell: up, check: CheckUp },
+        { dir: 'left', cell: left, check: CheckLeft },
+        { dir: 'down', cell: down, check: CheckDown }
+    ];
+
+    for (const { cell: dirCell, check } of directionsMap) {
+        if (dirCell && dirCell.title === "") {
+            // Try all 4 rotations
             let tempRoadData = roadTypeData;
-            for (let i = 1; i <= 4; i++) {
-                tempRoadData= rotateRoad(tempRoadData);
-                if (CheckRight(right, tempRoadData)) {
-                    PlaceRoad(right, roadTypeImage, roadTypeData, i );
-                    LASTTOUCHED = right;
+            for (let rot = 0; rot < 4; rot++) {
+                if (check(dirCell, tempRoadData)) {
+                    PlaceRoad(dirCell, roadTypeImage, roadTypeData, rot);
+                    LASTTOUCHED = dirCell;
                     return true;
                 }
+                tempRoadData = rotateRoad(tempRoadData);
             }
         }
-        console.log("fail right check");
     }
-    // up
-    if (up != null && up.title == "") {
-        console.log("checking up");
-        if (CheckUp(up, roadTypeData)) {
-            PlaceRoad(up, roadTypeImage, roadTypeData, 0);
-            LASTTOUCHED = up;
-            return true;} 
-        if (!isStraightRoad(roadTypeData)) {
-            let tempRoadData = roadTypeData;
-            for (let i = 1; i <= 4; i++) {
-                tempRoadData= rotateRoad(tempRoadData);
-                if (CheckUp(up, tempRoadData)) {
-                    PlaceRoad(up, roadTypeImage, roadTypeData, i  );
-                    LASTTOUCHED = up;
-                    return true;
-                }}
-        }
-    
-    console.log("fail up check");}
-    //left
-    console.log("fail up");
-    if ( left != null && left.title == "") {
-        if (CheckLeft(left, roadTypeData)) {
-            PlaceRoad(left, roadTypeImage, roadTypeData, 0);
-            LASTTOUCHED = left;
-            // console.log("Placed on left");
-            return true;
-        } 
-        // console.log("fail 1st left check");
-        if (!isStraightRoad(roadTypeData)) {
-            let tempRoadData = roadTypeData;
-            for (let i = 1; i <= 4; i++) {
-                tempRoadData= rotateRoad(tempRoadData);
-                if (CheckLeft(left, tempRoadData)) {
-                    PlaceRoad(left, roadTypeImage, roadTypeData, i  );
-                    LASTTOUCHED = left;
-                    return true;
-                }
-                // console.log(i);
-            }}
-        console.log("fail left check");
-    }
-    // down
-    if ( down != null && down.title == "") {
-        if (CheckDown(down, roadTypeData)) {
-            PlaceRoad(down, roadTypeImage, roadTypeData, 0);
-            LASTTOUCHED = down;
-            return true;
-        } 
-        if (!isStraightRoad(roadTypeData)) {
-            let tempRoadData = roadTypeData;
-            for (let i = 1; i <= 4; i++) {
-                tempRoadData= rotateRoad(tempRoadData);
-                if (CheckDown(down, tempRoadData)) {
-                    PlaceRoad(down, roadTypeImage, roadTypeData, i  );
-                    LASTTOUCHED = down;
-                    return true;
-                }
-            }
-        }
-        console.log("fail down check");
-    }
-    
-    if (cellData[0] == 0 && cellData[1] == 0 && cellData[2] == 0 && cellData[3] == 0) {
+
+    // If cell is empty (all zeros), place on first actionable cell
+    if (cellData.every(v => v === 0)) {
         let ac = GetActionableCells();
-        PlaceRoad(ac[0], roadTypeImage, roadTypeData, 0);
-        return true;
+        if (ac.length > 0) {
+            PlaceRoad(ac[0], roadTypeImage, roadTypeData, 0);
+            LASTTOUCHED = ac[0];
+            return true;
+        }
     }
 
     console.log("No valid placement found");
@@ -755,14 +828,15 @@ function CheckDown(DOWNcell, downCellData) {
  * @param {*} rotation  must be 0, 1, 2, or 3
  */
 function PlaceRoad(cell, roadTypeImage, roadTypeData, rotation=0) {
+    if (cell.title !== "") return; // Don't overwrite existing tiles
     // console.log(getCellIndexAsXY(cell));
     LASTTOUCHED = cell;
     // console.log(LASTTOUCHED);
     cell.style.backgroundImage = roadTypeImage;
     cell.style.transform = "rotate(0deg)";
     cell.title = JSON.stringify(roadTypeData);
-    cell.textContent = cell.title;
-    cell.style.color = "green";
+    // cell.textContent = cell.title;
+    // cell.style.color = "green";
     
     for (let i = 0; i < rotation; i++) {
         // console.log("Rotating for placement");
@@ -946,9 +1020,9 @@ function longestComponent(type = 1) {
     }
 
     // Highlight longest segment
-    longest.forEach(idx => {
-        grid.children[idx].style.border = "8px solid red";
-    });
+    // longest.forEach(idx => {
+    //     grid.children[idx].style.border = "8px solid red";
+    // });
     console.log(`Longest component of type ${type} has length ${longest.length}`
         , longest
     );
@@ -971,4 +1045,208 @@ console.log(array);
    for (let idx of array) {
         grid.children[idx].style.border = "8px solid red";
     }
+}
+
+function getAllComponents(type) {
+    let visited = new Set();
+    let components = [];
+    for (let i = 0; i < grid.children.length; i++) {
+        if (!visited.has(i) && grid.children[i].title) {
+            let data = JSON.parse(grid.children[i].title);
+            if (data.some(d => d === type)) {
+                let component = new Set();
+                bfsComponent(i, type, visited, component);
+                components.push(component);
+            }
+        }
+    }
+    return components;
+}
+
+function bfsComponent(startIndex, type, visited, component) {
+    let queue = [startIndex];
+    visited.add(startIndex);
+    component.add(startIndex);
+    while (queue.length > 0) {
+        let idx = queue.shift();
+        let cell = grid.children[idx];
+        let ci = getCellIndexAsXY(cell);
+        let d = JSON.parse(cell.title);
+        let directions = [
+            {dir: 0, dx: 0, dy: -1, opp: 2},
+            {dir: 1, dx: 1, dy: 0, opp: 3},
+            {dir: 2, dx: 0, dy: 1, opp: 0},
+            {dir: 3, dx: -1, dy: 0, opp: 1}
+        ];
+        for (let {dir, dx, dy, opp} of directions) {
+            if (d[dir] === type) {
+                let nx = ci.x + dx;
+                let ny = ci.y + dy;
+                if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
+                    let nidx = ny * gridSize + nx;
+                    let ncell = grid.children[nidx];
+                    if (ncell.title && !visited.has(nidx)) {
+                        let nd = JSON.parse(ncell.title);
+                        if (nd[opp] === type) {
+                            visited.add(nidx);
+                            component.add(nidx);
+                            queue.push(nidx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+function getCompletedCities() {
+    let visited = new Set();
+    let completed = [];
+    for (let i = 0; i < grid.children.length; i++) {
+        if (!visited.has(i) && grid.children[i].title) {
+            let data = JSON.parse(grid.children[i].title);
+            if (data.every(v => v === 0)) {
+                let component = new Set();
+                bfsCity(i, visited, component);
+                // Check if completed
+                let isCompleted = true;
+                for (let idx of component) {
+                    let cell = grid.children[idx];
+                    let ci = getCellIndexAsXY(cell);
+                    let d = JSON.parse(cell.title);
+                    let directions = [
+                        {dir: 0, dx: 0, dy: -1},
+                        {dir: 1, dx: 1, dy: 0},
+                        {dir: 2, dx: 0, dy: 1},
+                        {dir: 3, dx: -1, dy: 0}
+                    ];
+                    for (let {dir, dx, dy} of directions) {
+                        let nx = ci.x + dx;
+                        let ny = ci.y + dy;
+                        if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
+                            let nidx = ny * gridSize + nx;
+                            let ncell = grid.children[nidx];
+                            if (!ncell.title) {
+                                isCompleted = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (!isCompleted) break;
+                }
+                if (isCompleted) completed.push(component);
+            }
+        }
+    }
+    return completed;
+}
+
+function bfsCity(startIndex, visited, component) {
+    let queue = [startIndex];
+    visited.add(startIndex);
+    component.add(startIndex);
+    while (queue.length > 0) {
+        let idx = queue.shift();
+        let cell = grid.children[idx];
+        let ci = getCellIndexAsXY(cell);
+        let d = JSON.parse(cell.title);
+        let directions = [
+            {dir: 0, dx: 0, dy: -1, opp: 2},
+            {dir: 1, dx: 1, dy: 0, opp: 3},
+            {dir: 2, dx: 0, dy: 1, opp: 0},
+            {dir: 3, dx: -1, dy: 0, opp: 1}
+        ];
+        for (let {dir, dx, dy, opp} of directions) {
+            let nx = ci.x + dx;
+            let ny = ci.y + dy;
+            if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
+                let nidx = ny * gridSize + nx;
+                let ncell = grid.children[nidx];
+                if (ncell.title && !visited.has(nidx)) {
+                    let nd = JSON.parse(ncell.title);
+                    if (nd.every(v => v === 0)) {
+                        visited.add(nidx);
+                        component.add(nidx);
+                        queue.push(nidx);
+                    }
+                }
+            }
+        }
+    }
+}
+
+function getBorderingFields(completedCities) {
+    let bordering = new Map();
+    for (let i = 0; i < completedCities.length; i++) {
+        let comp = completedCities[i];
+        let fields = new Set();
+        for (let idx of comp) {
+            let cell = grid.children[idx];
+            let ci = getCellIndexAsXY(cell);
+            let d = JSON.parse(cell.title);
+            let directions = [
+                {dir: 0, dx: 0, dy: -1, opp: 2},
+                {dir: 1, dx: 1, dy: 0, opp: 3},
+                {dir: 2, dx: 0, dy: 1, opp: 0},
+                {dir: 3, dx: -1, dy: 0, opp: 1}
+            ];
+            for (let {dir, dx, dy, opp} of directions) {
+                if (d[dir] === 0) {
+                    let nx = ci.x + dx;
+                    let ny = ci.y + dy;
+                    if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
+                        let nidx = ny * gridSize + nx;
+                        let ncell = grid.children[nidx];
+                        if (ncell.title) {
+                            let nd = JSON.parse(ncell.title);
+                            if (nd[opp] === 2) {
+                                fields.add(nidx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        bordering.set(i, fields);
+    }
+    return bordering;
+}
+
+function calculateScore() {
+    let completedCities = getCompletedCities();
+    let bordering = getBorderingFields(completedCities);
+    let fieldComponents = getAllComponents(2);
+    let fieldScore = 0;
+    for (let comp of fieldComponents) {
+        let cities = new Set();
+        for (let cellIdx of comp) {
+            for (let [cityIdx, fields] of bordering) {
+                if (fields.has(cellIdx)) {
+                    cities.add(cityIdx);
+                }
+            }
+        }
+        fieldScore += 3 * cities.size;
+    }
+    let roadComponents = getAllComponents(1);
+    let roadScore = 0;
+    for (let comp of roadComponents) {
+        roadScore += comp.size;
+    }
+    let cityScore = 0;
+    for (let comp of completedCities) {
+        cityScore += comp.size;
+    }
+    let total = roadScore + cityScore + fieldScore;
+    return {roadScore, cityScore, fieldScore, total};
+}
+
+function updateScore() {
+    let score = calculateScore();
+    let html = `<h1>Score</h1>
+<p>Roads: ${score.roadScore}</p>
+<p>Cities: ${score.cityScore}</p>
+<p>Fields: ${score.fieldScore}</p>
+<p>Total: ${score.total}</p>`;
+    document.getElementById('scorePanel').innerHTML = html;
 }
